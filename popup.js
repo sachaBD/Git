@@ -7,12 +7,20 @@ window.onload = onWindowLoad;
 var refresh_group_open = false;
 var pre_selected_tabs = [];
 
-function onWindowLoad() {	
+
+function onWindowLoad() {
 	//setup doc props
     var message = document.querySelector('#message');
 
 	//global variables
 	checkboxes = {};
+	
+	//preselected tabs
+	chrome.tabs.query({highlighted: true}, function(tabs){
+		for(i=0;i<tabs.length;i++){
+			pre_selected_tabs[i] = tabs[i].id;
+		}
+	});
 	
 	//add groups
 	create_groups_icons();
@@ -20,14 +28,7 @@ function onWindowLoad() {
 	remove_buttons("groups");
 	remove_buttons("group_submit");
 	
-	//get selected tabs
-	chrome.tabs.query({highlighted: true}, function(tabs){
-		for(i=0;i<tabs.length;i++){
-			pre_selected_tabs[i] = tabs[i].id;
-		}
-	});
-	
-	//add focus
+		//add focus
 	window.setTimeout(function ()
     {
         document.getElementById("text").focus();
@@ -314,9 +315,16 @@ function create_group(){
 		{
 			var id = tabs[i].url;
 			var elem = add_input_return("button", id, tabs[i].title);
-			elem.className = "unselected";
+			
+			//check if selected
+			if(pre_selected_tabs.includes(tabs[i].id)){
+				elem.className = "buttonlist";
+				checkboxes[id] = 1;
+			}else{
+				elem.className = "unselected";
+				checkboxes[id] = 0;
+			}
 			area.appendChild(elem);
-			checkboxes[id] = 0;
 		}
 		
 		for(i=0;i<tabs.length;i++)
@@ -324,26 +332,16 @@ function create_group(){
 			var id = tabs[i].url;
 			var elem = document.getElementById(id);
 			elem.setAttribute('data-param', id);
-			
-			if(pre_selected_tabs.includes(tabs[i].id)){
-				elem.className = "buttonlist";
-			}
-			
-			//add on click
 			elem.addEventListener('click', function() {
-				
-			if(checkboxes.contains(this.getAttribute('data-param')))
+			if(checkboxes[this.getAttribute('data-param')] == 0)
 			{
-				if(checkboxes[this.getAttribute('data-param')] == 0)
-				{
-					document.getElementById(this.getAttribute('data-param')).className = "buttonlist"//""selected";
-					checkboxes[this.getAttribute('data-param')] = 1;
-				}
-				else
-				{
-					document.getElementById(this.getAttribute('data-param')).className = "unselected";
-					checkboxes[this.getAttribute('data-param')] = 0;
-				}
+				document.getElementById(this.getAttribute('data-param')).className = "buttonlist"//""selected";
+				checkboxes[this.getAttribute('data-param')] = 1;
+			}
+			else
+			{
+				document.getElementById(this.getAttribute('data-param')).className = "unselected";
+				checkboxes[this.getAttribute('data-param')] = 0;
 			}
 		});
 		}
@@ -595,7 +593,7 @@ function open_group(input_key){
 
 function close_group(input_key){
 	var text = "";
-	
+		
 	chrome.storage.sync.get(null, function(items){
 		for (key in items){
 			if(items[key]['group'] == 'true' && key == input_key)
@@ -606,11 +604,13 @@ function close_group(input_key){
 					{
 						if(String(k).includes("#"))
 						{
-							var k_clean = String(k).substring(0,k.indexOf('#'));
+							var k_clean = String(k).substring(0,s.indexOf('#'));
+							alert(k_clean);
 							chrome.tabs.query({'url' : k_clean}, function(tabs){
 								chrome.tabs.remove(tabs[0].id);
 						});
 						} else {
+							alert("else");
 							chrome.tabs.query({'url' : k}, function(tabs){
 								chrome.tabs.remove(tabs[0].id);
 						});
